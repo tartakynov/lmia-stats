@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS imported_files (
 -- Create table for employers dataset
 CREATE TABLE IF NOT EXISTS employers (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    year INT,
+    quarter INT,
     province VARCHAR(255),
     program_stream VARCHAR(255),
     employer VARCHAR(255),

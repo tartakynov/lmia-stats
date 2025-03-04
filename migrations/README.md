@@ -47,3 +47,4 @@ This will:
 ## Migration Tracking
 
 The system uses a table called `applied_migrations` to track which migrations have been applied. This table is automatically created when you run the first migration.
+

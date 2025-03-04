@@ -1,0 +1,7 @@
+Software Engineering:
+21231: Software engineers and designers
+21232: Software developers and programmers
+21234: Web developers and programmers
+Computer Systems:
+21230: Computer systems developers and programmers
+21311: Computer engineers (except software engineers and designers)

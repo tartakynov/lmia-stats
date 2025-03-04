@@ -125,8 +125,8 @@ def insert_employer_data(data_rows, import_file_id):
         INSERT INTO employers (
             province, program_stream, employer, address,
             occupation, incorporate_status, approved_lmias,
-            approved_positions, import_file_id
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            approved_positions, import_file_id, year, quarter
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         for row in data_rows:
@@ -139,7 +139,9 @@ def insert_employer_data(data_rows, import_file_id):
                 row.get('incorporate_status'),
                 row.get('approved_lmias'),
                 row.get('approved_positions'),
-                import_file_id
+                import_file_id,
+                row.get('year'),
+                row.get('quarter')
             ))
 
         conn.commit()

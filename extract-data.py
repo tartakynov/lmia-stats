@@ -8,15 +8,48 @@ Example: python extract-data.py employers
 import os
 import sys
 import glob
+import re
 import pandas as pd
 from db_utils import is_file_imported, record_imported_file, insert_employer_data
 
-def extract_employers_data(file_path):
+def parse_year_quarter(filename):
+    """
+    Parse year and quarter from filename.
+    Expected format: tfwp_YYYYqQ_pos_en.xlsx
+    Example: tfwp_2024q3_pos_en.xlsx
+
+    Args:
+        filename (str): Name of the file
+
+    Returns:
+        tuple: (year, quarter) or (None, None) if parsing fails
+    """
+    # Remove file extension
+    base_name = os.path.splitext(filename)[0]
+
+    # Pattern for tfwp_YYYYqQ_pos_en format
+    pattern = r'tfwp_(\d{4})q(\d)_.+'
+
+    match = re.search(pattern, base_name.lower())  # case insensitive match
+    if match:
+        try:
+            year = int(match.group(1))
+            quarter = int(match.group(2))
+            if 2000 <= year <= 2100 and 1 <= quarter <= 4:
+                return year, quarter
+        except (ValueError, IndexError):
+            pass
+
+    return None, None
+
+def extract_employers_data(file_path, year, quarter):
     """
     Extract data from an employers dataset Excel file.
 
     Args:
         file_path (str): Path to the Excel file
+        year (int): Year parsed from filename
+        quarter (int): Quarter parsed from filename
 
     Returns:
         list: List of dictionaries containing the extracted data
@@ -69,7 +102,9 @@ def extract_employers_data(file_path):
                 'occupation': row.get('Occupation', None),
                 'incorporate_status': row.get('Incorporate Status', None),
                 'approved_lmias': int(row.get('Approved LMIAs', 0)) if pd.notna(row.get('Approved LMIAs', 0)) else 0,
-                'approved_positions': int(row.get('Approved Positions', 0)) if pd.notna(row.get('Approved Positions', 0)) else 0
+                'approved_positions': int(row.get('Approved Positions', 0)) if pd.notna(row.get('Approved Positions', 0)) else 0,
+                'year': year,
+                'quarter': quarter
             }
             data_rows.append(data_row)
 
@@ -107,16 +142,22 @@ def process_dataset(dataset_name):
     for file_path in excel_files:
         file_name = os.path.basename(file_path)
 
+        # Parse year and quarter from filename
+        year, quarter = parse_year_quarter(file_name)
+        if year is None or quarter is None:
+            print(f"Warning: Could not parse year and quarter from {file_name}. Skipping file.")
+            continue
+
         # Check if this file has already been imported
         if is_file_imported(dataset_name, file_name):
             print(f"Skipping {file_name} - already imported.")
             continue
 
-        print(f"Processing {file_name}...")
+        print(f"Processing {file_name} (Year: {year}, Quarter: {quarter})...")
 
         # Extract data based on the dataset type
         if dataset_name == 'employers':
-            data_rows = extract_employers_data(file_path)
+            data_rows = extract_employers_data(file_path, year, quarter)
         else:
             print(f"Error: Unknown dataset type '{dataset_name}'.")
             continue
