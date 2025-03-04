@@ -15,7 +15,7 @@ from db_utils import is_file_imported, record_imported_file, insert_employer_dat
 def parse_year_quarter(filename):
     """
     Parse year and quarter from filename.
-    Expected format: tfwp_YYYYqQ_pos_en.xlsx
+    Expected format: tfwp_YYYYqQ_pos_en.xlsx or tfwp_YYYYqQ_pos_en.csv
     Example: tfwp_2024q3_pos_en.xlsx
 
     Args:
@@ -42,12 +42,44 @@ def parse_year_quarter(filename):
 
     return None, None
 
-def extract_employers_data(file_path, year, quarter):
+def read_data_file(file_path):
     """
-    Extract data from an employers dataset Excel file.
+    Read data from either Excel or CSV file.
 
     Args:
-        file_path (str): Path to the Excel file
+        file_path (str): Path to the data file
+
+    Returns:
+        pandas.DataFrame: DataFrame containing the file data, or None if reading fails
+    """
+    try:
+        file_ext = os.path.splitext(file_path)[1].lower()
+
+        if file_ext == '.xlsx':
+            return pd.read_excel(file_path, header=None)
+        elif file_ext == '.csv':
+            # Read CSV with Windows line endings and try different encodings
+            encodings = ['utf-8', 'cp1252', 'latin1']
+            for encoding in encodings:
+                try:
+                    return pd.read_csv(file_path, header=None, encoding=encoding)
+                except UnicodeDecodeError:
+                    continue
+            # If all encodings fail, try default encoding with error handling
+            return pd.read_csv(file_path, header=None, encoding='utf-8', errors='replace')
+        else:
+            print(f"Unsupported file format: {file_ext}")
+            return None
+    except Exception as e:
+        print(f"Error reading file {file_path}: {e}")
+        return None
+
+def extract_employers_data(file_path, year, quarter):
+    """
+    Extract data from an employers dataset file.
+
+    Args:
+        file_path (str): Path to the data file
         year (int): Year parsed from filename
         quarter (int): Quarter parsed from filename
 
@@ -55,8 +87,10 @@ def extract_employers_data(file_path, year, quarter):
         list: List of dictionaries containing the extracted data
     """
     try:
-        # Read the Excel file
-        df = pd.read_excel(file_path, header=None)
+        # Read the file
+        df = read_data_file(file_path)
+        if df is None:
+            return []
 
         # Find the row index where the data starts (after the header)
         # First row is description, second row is column headers
@@ -93,14 +127,14 @@ def extract_employers_data(file_path, year, quarter):
         # Convert to list of dictionaries
         data_rows = []
         for _, row in data_df.iterrows():
-            # Map Excel columns to database columns
+            # Map Excel columns to database columns and strip whitespace from string values
             data_row = {
-                'province': row.get('Province/Territory', None),
-                'program_stream': row.get('Program Stream', None),
-                'employer': row.get('Employer', None),
-                'address': row.get('Address', None),
-                'occupation': row.get('Occupation', None),
-                'incorporate_status': row.get('Incorporate Status', None),
+                'province': row.get('Province/Territory', '').strip() if isinstance(row.get('Province/Territory'), str) else None,
+                'program_stream': row.get('Program Stream', '').strip() if isinstance(row.get('Program Stream'), str) else None,
+                'employer': row.get('Employer', '').strip() if isinstance(row.get('Employer'), str) else None,
+                'address': row.get('Address', '').strip() if isinstance(row.get('Address'), str) else None,
+                'occupation': row.get('Occupation', '').strip() if isinstance(row.get('Occupation'), str) else None,
+                'incorporate_status': row.get('Incorporate Status', '').strip() if isinstance(row.get('Incorporate Status'), str) else None,
                 'approved_lmias': int(row.get('Approved LMIAs', 0)) if pd.notna(row.get('Approved LMIAs', 0)) else 0,
                 'approved_positions': int(row.get('Approved Positions', 0)) if pd.notna(row.get('Approved Positions', 0)) else 0,
                 'year': year,
@@ -116,7 +150,7 @@ def extract_employers_data(file_path, year, quarter):
 
 def process_dataset(dataset_name):
     """
-    Process all Excel files for a given dataset.
+    Process all Excel and CSV files for a given dataset.
 
     Args:
         dataset_name (str): Name of the dataset
@@ -129,17 +163,18 @@ def process_dataset(dataset_name):
         print(f"Error: Directory {data_dir} does not exist.")
         return
 
-    # Get all Excel files in the directory
-    excel_files = glob.glob(os.path.join(data_dir, '*.xlsx'))
+    # Get all Excel and CSV files in the directory
+    data_files = glob.glob(os.path.join(data_dir, '*.xlsx'))
+    data_files.extend(glob.glob(os.path.join(data_dir, '*.csv')))
 
-    if not excel_files:
-        print(f"No Excel files found in {data_dir}.")
+    if not data_files:
+        print(f"No Excel or CSV files found in {data_dir}.")
         return
 
-    print(f"Found {len(excel_files)} Excel files in {data_dir}.")
+    print(f"Found {len(data_files)} data files in {data_dir}.")
 
     # Process each file
-    for file_path in excel_files:
+    for file_path in data_files:
         file_name = os.path.basename(file_path)
 
         # Parse year and quarter from filename
