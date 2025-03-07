@@ -6,12 +6,18 @@ Analysis of Canada's Temporary Foreign Worker Program (TFWP) data from Open Gove
 
 1. Set up `.env` file in the project root. Copy the structure from `.env.example` file.
 
-2. Start the database:
+2. Create virtualenv environment
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Start the database:
    ```bash
    docker-compose up -d
    ```
 
-3. Run migrations:
+4. Run migrations:
    ```bash
    python setup_db.py
    ```
